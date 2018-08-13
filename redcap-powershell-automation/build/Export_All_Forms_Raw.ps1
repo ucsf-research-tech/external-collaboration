@@ -1,12 +1,11 @@
 ﻿#requires -version 3
 <#
 .SYNOPSIS
-  UCSF Graduate Career Outcomes extract from REDCap
+  API-based mass extract of all data from all forms from REDCap project
 .DESCRIPTION
   
 .INPUTS
     None - automated process
-    Need to update to protect API token with Get-Credential
 .OUTPUTS
     Extracted data files dumped to C:\temp.
 .NOTES
@@ -14,6 +13,12 @@
   Author:         Remi Frazier
   Creation Date:  2018-08-13
   Purpose/Change: Refactored code to improve clarity of flow and commenting
+.TODO
+    Update to protect API token with Get-Credential
+    Update to properly call as pipelined cmdlet
+    Update to manage exception handling
+    Update to manage logging
+    Sign code
 .EXAMPLE
   n/a
 #>
@@ -40,10 +45,10 @@ $ErrorActionPreference = 'Stop'
 
 #Project-specific connection strings
     $apiUrl='https://redcap.ucsf.edu/api/' #replace with your institution's API URL
-    $apiToken='XXXXXXXXXXXXXXXXXXXXXXXXXXXXX' #replace with your API token
+    $apiToken='XXXXXXXXXXXXXXXXXXXXXXXXXX' #replace with your API token
 
 #REDCap project-specific structure information
-    $guidLabel='record_id' #replace with your project's unique identifier field
+   $guidLabel='record_id' #replace with your project's unique identifier field
 
 
 #Project-specific lookup tables
