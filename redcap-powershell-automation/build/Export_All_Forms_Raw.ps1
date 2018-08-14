@@ -9,10 +9,10 @@
 .OUTPUTS
     Extracted data files dumped to C:\temp.
 .NOTES
-  Version:        1.2
+  Version:        1.3
   Author:         Remi Frazier
-  Creation Date:  2018-08-13
-  Purpose/Change: Refactored code to improve clarity of flow and commenting
+  Creation Date:  2018-08-14
+  Purpose/Change: Added checking for repeating instrument blank rows
 .TODO
     Update to protect API token with Get-Credential
     Update to properly call as pipelined cmdlet
@@ -40,12 +40,13 @@ $ErrorActionPreference = 'Stop'
 #----------------------------------------------------------[Declarations]----------------------------------------------------------
 
 #Global Declarations of file sources
-    $instrumentsPath='c:\temp\instruments.csv' 
     $outputPath='c:\temp\' 
+    $instrumentsPath='c:\temp\instruments.csv' 
+    $repeatingInstrumentsPath='c:\temp\repeating_instruments.csv'
 
 #Project-specific connection strings
     $apiUrl='https://redcap.ucsf.edu/api/' #replace with your institution's API URL
-    $apiToken='XXXXXXXXXXXXXXXXXXXXXXXXXX' #replace with your API token
+    $apiToken='XXXXXXXXXXXXXXXXXX' #replace with your API token
 
 #REDCap project-specific structure information
    $guidLabel='record_id' #replace with your project's unique identifier field
@@ -108,6 +109,26 @@ function redcapExportForms
     $response = Invoke-RestMethod $apiUrl -Method Post -body $call #$body -ContentType 'application/json' #'application/json' #-Body $body -ContentType 'application/json' #-Headers $hdrs 
     Return $response
     }
+
+function redcapExportRepeatingInstruments
+{
+	[CmdletBinding()]
+	Param
+	(
+		[Parameter(Mandatory=$true)][String]$apiUrl,
+		[Parameter(Mandatory=$true)][String]$apiToken
+	)
+    $call = @{
+        token=$apiToken
+        content='repeatingFormsEvents'
+        format='csv'
+        type='flat'
+        }
+    $body = (ConvertTo-Json $call) 
+    $response = Invoke-RestMethod $apiUrl -Method Post -body $call #$body -ContentType 'application/json' #'application/json' #-Body $body -ContentType 'application/json' #-Headers $hdrs 
+    Return $response
+    }
+
 #-------------------------
 
 
@@ -117,12 +138,26 @@ function reformatOutput
 	Param
 	(
 		[Parameter(Mandatory=$true)][String]$text,
-		[Parameter(Mandatory=$true)][String]$path
+		[Parameter(Mandatory=$true)][String]$path,
+        [Parameter(Mandatory=$false)][String]$output=$path
 	)
     $pathTemp=$path + ".tmp"
     $text | Out-File $pathTemp
     Import-Csv $pathTemp | Export-Csv $path -NoTypeInformation
     Remove-Item $pathTemp
+}
+
+function includeOnlyRepeatingInstrumentData
+{
+	[CmdletBinding()]
+	Param
+	(
+		[Parameter(Mandatory=$true)][String]$path,
+        [Parameter(Mandatory=$false)][String]$output=$path
+	)
+  
+    $data=Import-Csv $path 
+    $data.Where({$PSItem.redcap_repeat_instrument.length -ne 0}) | Export-Csv $output -NoTypeInformation
 }
 
 
@@ -131,13 +166,16 @@ cls
 
 
 #---
-#Get list of instruments from project
+#Get list of instruments from project and reformat output into a somewhat more Excel-friendly CSV
 $return=redcapExportForms -apiUrl 'https://redcap.ucsf.edu/api/' -apiToken $apiToken
-
-#--
-# Reformat output into a somewhat more Excel-friendly CSV
-# (not really necessary for the process, but helpful for troubleshooting)
 reformatOutput -text $return -path $instrumentsPath
+
+
+#---
+#Get list of repeating instruments from project
+$return=redcapExportRepeatingInstruments -apiUrl 'https://redcap.ucsf.edu/api/' -apiToken $apiToken
+reformatOutput -text $return -path $repeatingInstrumentsPath
+
 
 #--
 # Load instrument list from file for iteration
@@ -163,3 +201,17 @@ $instruments | Foreach-Object {
     $outputSize=$response.Length
     Write-Output "$instrument - wrote $outputSize bytes"
 }
+
+
+
+Write-Output "Reviewing repeating instruments to remove blank rows"
+$repeatingInstruments=import-csv $repeatingInstrumentsPath
+
+$repeatingInstruments | Foreach-Object {
+    Write-Output "Reviewing $instrument"
+    $instrument=$_.form_name
+    $output = $outputPath+$instrument+".csv"
+    Write-Output "Truncating $instrument"
+    includeOnlyRepeatingInstrumentData -path $output
+}
+
