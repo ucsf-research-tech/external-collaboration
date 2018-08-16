@@ -18,6 +18,7 @@
     Update to properly call as pipelined cmdlet
     Update to manage exception handling
     Update to manage logging
+    Explicit commenting of functions
     Sign code
 .EXAMPLE
   n/a
