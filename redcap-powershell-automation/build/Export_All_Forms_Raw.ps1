@@ -9,9 +9,9 @@
 .OUTPUTS
     Extracted data files dumped to C:\temp.
 .NOTES
-  Version:        1.3
+  Version:        1.4
   Author:         Remi Frazier
-  Creation Date:  2018-08-14
+  Creation Date:  2018-08-16
   Purpose/Change: Added checking for repeating instrument blank rows
 .TODO
     Update to protect API token with Get-Credential
@@ -46,7 +46,7 @@ $ErrorActionPreference = 'Stop'
 
 #Project-specific connection strings
     $apiUrl='https://redcap.ucsf.edu/api/' #replace with your institution's API URL
-    $apiToken='XXXXXXXXXXXXXXXXXX' #replace with your API token
+    $apiToken='XXXXXXXXXXXXXXXXX' #replace with your API token
 
 #REDCap project-specific structure information
    $guidLabel='record_id' #replace with your project's unique identifier field
@@ -157,7 +157,7 @@ function includeOnlyRepeatingInstrumentData
 	)
   
     $data=Import-Csv $path 
-    $data.Where({$PSItem.redcap_repeat_instrument.length -ne 0}) | Export-Csv $output -NoTypeInformation
+    $data.Where({$PSItem.redcap_repeat_instrument.length -ne 0 -OR $PSItem.'Repeat Instrument'.length -ne 0}) | Export-Csv $output -NoTypeInformation
 }
 
 
@@ -194,7 +194,7 @@ $instruments | Foreach-Object {
     Write-Output "Requesting $instrument"
 
     # Request data for this instrument and reformat output to make more Excel friendly
-    $response=redcapExportData -apiUrl 'https://redcap.ucsf.edu/api/' -apiToken $apiToken -form $instrument -guidLabel $guidLabel
+    $response=redcapExportData -apiUrl 'https://redcap.ucsf.edu/api/' -apiToken $apiToken -form $instrument -guidLabel $guidLabel -rawOrLabel 'label'
     reformatOutput -text $response -path $output
 
     # Report results
